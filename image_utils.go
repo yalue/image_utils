@@ -1,3 +1,5 @@
+// The image_utils package contains a variety of functions I've written across
+// various projects using Go's image.Image interface.
 package image_utils
 
 import (
@@ -243,5 +245,94 @@ func AddImageBorder(pic image.Image, borderColor color.Color,
 		picBounds:   pic.Bounds().Canon(),
 		borderWidth: width,
 		fillColor:   borderColor,
+	}
+}
+
+// Implements the image.Image interface, wraps an underlying image but presents
+// a version of it rotated to the right.
+type rotatedRightImage struct {
+	newBounds    image.Rectangle
+	originalMaxY int
+	pic          image.Image
+}
+
+func (r *rotatedRightImage) ColorModel() color.Model {
+	return r.pic.ColorModel()
+}
+
+func (r *rotatedRightImage) Bounds() image.Rectangle {
+	return r.newBounds
+}
+
+func (r *rotatedRightImage) At(x, y int) color.Color {
+	return r.pic.At(y, r.originalMaxY-x)
+}
+
+// Takes an input image and returns a new image, consisting of the original
+// rotated to the right by 90 degrees. May not work correctly if the original
+// image's bounds don't start at (0, 0). Continues referring to the same
+// original image.
+func RotateRight(pic image.Image) image.Image {
+	originalBounds := pic.Bounds().Canon()
+	// NOTE: This only works if the original image starts at 0, 0.
+	newBounds := image.Rect(0, 0, originalBounds.Dy(), originalBounds.Dx())
+	return &rotatedRightImage{
+		newBounds:    newBounds,
+		originalMaxY: originalBounds.Max.Y - 1,
+		pic:          pic,
+	}
+}
+
+// Implements the image.Image interface, wraps an underlying image, but
+// presents it vertically flipped.
+type verticalFlippedImage struct {
+	yOffset int
+	pic     image.Image
+}
+
+func (v *verticalFlippedImage) ColorModel() color.Model {
+	return v.pic.ColorModel()
+}
+
+func (v *verticalFlippedImage) Bounds() image.Rectangle {
+	return v.pic.Bounds()
+}
+
+func (v *verticalFlippedImage) At(x, y int) color.Color {
+	return v.pic.At(x, v.yOffset-y)
+}
+
+// Takes an image and returns a new image, consisting of the image flipped
+// vertically. May not work correctly if the original image's bounds don't
+// start at (0, 0). Continues referring to the same original image.
+func VerticalFlip(pic image.Image) image.Image {
+	return &verticalFlippedImage{
+		yOffset: pic.Bounds().Canon().Max.Y - 1,
+		pic:     pic,
+	}
+}
+
+// Works the same as verticalFlippedImage
+type horizontalFlippedImage struct {
+	xOffset int
+	pic     image.Image
+}
+
+func (h *horizontalFlippedImage) ColorModel() color.Model {
+	return h.pic.ColorModel()
+}
+
+func (h *horizontalFlippedImage) Bounds() image.Rectangle {
+	return h.pic.Bounds()
+}
+
+func (h *horizontalFlippedImage) At(x, y int) color.Color {
+	return h.pic.At(h.xOffset-x, y)
+}
+
+func HorizontalFlip(pic image.Image) image.Image {
+	return &horizontalFlippedImage{
+		xOffset: pic.Bounds().Canon().Max.X - 1,
+		pic:     pic,
 	}
 }
