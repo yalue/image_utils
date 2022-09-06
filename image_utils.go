@@ -336,3 +336,18 @@ func HorizontalFlip(pic image.Image) image.Image {
 		pic:     pic,
 	}
 }
+
+// Takes an arbitrary image and converts it to an RGBA image. Resets the top-
+// left corner if the returned image to be at 0, 0.
+func ToRGBA(pic image.Image) *image.RGBA {
+	b := pic.Bounds().Canon()
+	w := b.Dx()
+	h := b.Dy()
+	toReturn := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			toReturn.Set(x, y, pic.At(b.Min.X+x, b.Min.Y+y))
+		}
+	}
+	return toReturn
+}
