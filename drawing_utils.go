@@ -146,20 +146,24 @@ func DrawLine(a, b image.Point, c color.Color, dst DrawableImage) error {
 // image's background will be transparent.
 func UpArrow(c color.Color) image.Image {
 	t := color.RGBA{0, 0, 0, 0}
-	toReturn := image.NewRGBA(image.Rect(0, 0, 8, 8))
+	cols := 9
+	rows := 10
+	toReturn := image.NewRGBA(image.Rect(0, 0, cols, rows))
 	colors := []color.Color{
-		t, t, t, t, t, t, t, t,
-		t, t, t, c, c, t, t, t,
-		t, t, c, c, c, c, t, t,
-		t, c, c, c, c, c, c, t,
-		t, t, t, c, c, t, t, t,
-		t, t, t, c, c, t, t, t,
-		t, t, t, c, c, t, t, t,
-		t, t, t, t, t, t, t, t,
+		t, t, t, t, t, t, t, t, t,
+		t, t, t, t, c, t, t, t, t,
+		t, t, t, c, c, c, t, t, t,
+		t, t, c, c, c, c, c, t, t,
+		t, c, c, c, c, c, c, c, t,
+		t, t, t, c, c, c, t, t, t,
+		t, t, t, c, c, c, t, t, t,
+		t, t, t, c, c, c, t, t, t,
+		t, t, t, c, c, c, t, t, t,
+		t, t, t, t, t, t, t, t, t,
 	}
 	i := 0
-	for y := 0; y < 8; y++ {
-		for x := 0; x < 8; x++ {
+	for y := 0; y < rows; y++ {
+		for x := 0; x < cols; x++ {
 			toReturn.Set(x, y, colors[i])
 			i++
 		}
