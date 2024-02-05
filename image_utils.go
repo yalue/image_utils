@@ -122,29 +122,31 @@ func (c FloatColor) Scale(scale float32) FloatColor {
 	}
 }
 
+func clamp32(v float32) float32 {
+	if v < 0.0 {
+		return 0.0
+	}
+	if v > 1.0 {
+		return 1.0
+	}
+	return v
+}
+
+func (c FloatColor) Brightness() float32 {
+	return (clamp32(c.R) + clamp32(c.G) + clamp32(c.B)) / 3.0
+}
+
 func (c FloatColor) RGBA() (r, g, b, a uint32) {
-	var red, green, blue uint32
-	if c.R >= 1.0 {
-		red = 0xffff
-	} else {
-		red = uint32(c.R * float32(0xffff))
-	}
-	if c.G >= 1.0 {
-		green = 0xffff
-	} else {
-		green = uint32(c.G * float32(0xffff))
-	}
-	if c.B >= 1.0 {
-		blue = 0xffff
-	} else {
-		blue = uint32(c.B * float32(0xffff))
-	}
-	return red, green, blue, 0xffff
+	r = uint32(clamp32(c.R) * float32(0xffff))
+	g = uint32(clamp32(c.G) * float32(0xffff))
+	b = uint32(clamp32(c.B) * float32(0xffff))
+	a = 0xffff
+	return
 }
 
 func (c FloatColor) String() string {
-	return fmt.Sprintf("%04x%04x%04x", uint16(c.R*0xffff), uint16(c.G*0xffff),
-		uint16(c.B*0xffff))
+	r, g, b, _ := c.RGBA()
+	return fmt.Sprintf("%02x%02x%02x", r>>8, g>>8, b>>8)
 }
 
 // Takes an arbitrary color and returns a FloatColor. Returns the original
@@ -193,6 +195,13 @@ func (f *FloatColorImage) Add(x, y int, toAdd color.Color) {
 	}
 	pixel := f.Pixels[(y*f.w)+x]
 	f.Pixels[(y*f.w)+x] = pixel.Add(toAdd)
+}
+
+func (f *FloatColorImage) Set(x, y int, c color.Color) {
+	if (x < 0) || (y < 0) || (x >= f.w) || (y >= f.h) {
+		return
+	}
+	f.Pixels[y*f.w+x] = ConvertToFloatColor(c)
 }
 
 // Creates a new blank FloatColorImage with the given dimensions.
@@ -350,4 +359,64 @@ func ToRGBA(pic image.Image) *image.RGBA {
 		}
 	}
 	return toReturn
+}
+
+// Satisfies the Color interface. Used for grayscale float images.
+type FloatGrayscale float32
+
+func (f FloatGrayscale) RGBA() (r, g, b, a uint32) {
+	v := uint32(clamp32(float32(f)) * float32(0xffff))
+	return v, v, v, 0xffff
+}
+
+func ConvertToFloatGrayscale(c color.Color) FloatGrayscale {
+	fg, isFloatGrayscale := c.(FloatGrayscale)
+	if isFloatGrayscale {
+		return fg
+	}
+	r, g, b, _ := c.RGBA()
+	v := float32(r+g+b) / float32(0xffff*3)
+	return FloatGrayscale(clamp32(v))
+}
+
+type FloatGrayscaleImage struct {
+	W, H   int
+	Pixels []float32
+}
+
+func (f *FloatGrayscaleImage) Bounds() image.Rectangle {
+	return image.Rect(0, 0, f.W, f.H)
+}
+
+func (f *FloatGrayscaleImage) ColorModel() color.Model {
+	return color.ModelFunc(func(c color.Color) color.Color {
+		return ConvertToFloatGrayscale(c)
+	})
+}
+
+func (f *FloatGrayscaleImage) At(x, y int) color.Color {
+	if (x < 0) || (x >= f.W) || (y < 0) || (y >= f.H) {
+		return FloatGrayscale(0)
+	}
+	return FloatGrayscale(f.Pixels[y*f.W+x])
+}
+
+func (f *FloatGrayscaleImage) Set(x, y int, c color.Color) {
+	if (x < 0) || (x >= f.W) || (y < 0) || (y >= f.H) {
+		return
+	}
+	f.Pixels[y*f.W+x] = float32(ConvertToFloatGrayscale(c))
+}
+
+// Creates and returns an empty FloatGrayscaleImage.
+func NewFloatGrayscaleImage(w, h int) (*FloatGrayscaleImage, error) {
+	if (w <= 0) || (h <= 0) || ((w * h) <= 0) {
+		return nil, fmt.Errorf("Invalid image dimensions (%dx%d=%d pixels)",
+			w, h, w*h)
+	}
+	return &FloatGrayscaleImage{
+		W:      w,
+		H:      h,
+		Pixels: make([]float32, w*h),
+	}, nil
 }
