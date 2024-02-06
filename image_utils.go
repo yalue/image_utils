@@ -183,7 +183,11 @@ func (f *FloatColorImage) ColorModel() color.Model {
 
 func (f *FloatColorImage) At(x, y int) color.Color {
 	if (x < 0) || (y < 0) || (x >= f.w) || (y >= f.h) {
-		return color.Black
+		return FloatColor{
+			R: 0,
+			G: 0,
+			B: 0,
+		}
 	}
 	return f.Pixels[(y*f.w)+x]
 }
@@ -214,6 +218,47 @@ func NewFloatColorImage(w, h int) (*FloatColorImage, error) {
 		h:      h,
 		Pixels: make([]FloatColor, w*h),
 	}, nil
+}
+
+// Wraps a FloatColorImage, but blurs the result by the given radius. Satisfies
+// the Image interface.
+type BlurredFloatColorImage struct {
+	Pic    *FloatColorImage
+	Radius int
+}
+
+func (m *BlurredFloatColorImage) Bounds() image.Rectangle {
+	return m.Pic.Bounds()
+}
+
+func (m *BlurredFloatColorImage) ColorModel() color.Model {
+	return m.Pic.ColorModel()
+}
+
+func (m *BlurredFloatColorImage) At(x, y int) color.Color {
+	rSquared := float32(m.Radius) * float32(m.Radius)
+	var sum FloatColor
+	pixels := 0
+	for j := y - m.Radius; j < y+m.Radius+1; j++ {
+		if (j < 0) || (j >= m.Pic.h) {
+			continue
+		}
+		dy := float32(y - j)
+		dy2 := dy * dy
+		for i := x - m.Radius; i < x+m.Radius+1; i++ {
+			if (i < 0) || (i >= m.Pic.w) {
+				continue
+			}
+			dx := float32(x - i)
+			distanceSquared := dx*dx + dy2
+			if distanceSquared > rSquared {
+				continue
+			}
+			pixels++
+			sum = sum.Add(m.Pic.At(i, j).(FloatColor))
+		}
+	}
+	return sum.Scale(1.0 / float32(pixels))
 }
 
 // Satisfies the Image interface, used to implement AddImageBorder.
@@ -419,4 +464,46 @@ func NewFloatGrayscaleImage(w, h int) (*FloatGrayscaleImage, error) {
 		H:      h,
 		Pixels: make([]float32, w*h),
 	}, nil
+}
+
+// Like BlurredFloatColorImage, but wraps a grayscale float image.
+type BlurredFloatGrayscaleImage struct {
+	Pic    *FloatGrayscaleImage
+	Radius int
+}
+
+func (g *BlurredFloatGrayscaleImage) Bounds() image.Rectangle {
+	return g.Pic.Bounds()
+}
+
+func (g *BlurredFloatGrayscaleImage) ColorModel() color.Model {
+	return g.Pic.ColorModel()
+}
+
+func (m *BlurredFloatGrayscaleImage) At(x, y int) color.Color {
+	rSquared := float32(m.Radius) * float32(m.Radius)
+	sum := float32(0)
+	pixels := 0
+	w := m.Pic.W
+	h := m.Pic.H
+	for j := y - m.Radius; j < y+m.Radius+1; j++ {
+		if (j < 0) || (j >= h) {
+			continue
+		}
+		dy := float32(y - j)
+		dy2 := dy * dy
+		for i := x - m.Radius; i < x+m.Radius+1; i++ {
+			if (i < 0) || (i >= w) {
+				continue
+			}
+			dx := float32(x - i)
+			distanceSquared := dx*dx + dy2
+			if distanceSquared > rSquared {
+				continue
+			}
+			pixels++
+			sum += m.Pic.Pixels[j*w+i]
+		}
+	}
+	return FloatGrayscale(sum / float32(pixels))
 }
