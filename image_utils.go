@@ -507,3 +507,39 @@ func (m *BlurredFloatGrayscaleImage) At(x, y int) color.Color {
 	}
 	return FloatGrayscale(sum / float32(pixels))
 }
+
+// Takes a DrawableImage, converts it to grayscale, and applies a blur with the
+// given radius.
+func BlurGrayscale(pic DrawableImage, radius int) error {
+	if radius <= 0 {
+		return fmt.Errorf("The blur radius must be positive, got %d", radius)
+	}
+	// We'll jump through the few extra hoops to enable images with a min that
+	// isn't 0, 0.
+	bounds := pic.Bounds().Canon()
+	w := bounds.Dx()
+	h := bounds.Dy()
+	tmpPic, e := NewFloatGrayscaleImage(w, h)
+	if e != nil {
+		return fmt.Errorf("Error creating temporary float grayscale image: %w",
+			e)
+	}
+	i := 0
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			tmpPic.Pixels[i] = float32(ConvertToFloatGrayscale(pic.At(x, y)))
+			i++
+		}
+	}
+	blurred := &BlurredFloatGrayscaleImage{
+		Pic:    tmpPic,
+		Radius: radius,
+	}
+	// Overwrite the original image data with the blurred grayscale pixels.
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			pic.Set(bounds.Min.X+x, bounds.Min.Y+y, blurred.At(x, y))
+		}
+	}
+	return nil
+}
